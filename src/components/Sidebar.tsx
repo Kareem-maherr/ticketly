@@ -16,7 +16,6 @@ interface SidebarProps {
     Open: number;
     'In Progress': number;
     Resolved: number;
-    Closed: number;
   };
   onShowResolvedTickets?: (show: boolean) => void;
 }
@@ -46,7 +45,7 @@ export default function Sidebar({
         const resolvedQuery = query(
           ticketsRef,
           where('ownerEmail', '==', authUser.email),
-          where('status', 'in', ['Resolved', 'Closed'])
+          where('status', 'in', ['Resolved'])
         );
 
         const unresolvedQuery = query(
@@ -156,7 +155,7 @@ export default function Sidebar({
                     ${!showingResolved ? 'bg-gray-50' : ''}`}
                 >
                   <FaTicketAlt className="mr-2.5 text-green-500 text-[14px]" />
-                  <span className="font-medium">Current Tickets</span>
+                  <span className="font-medium">Active Tickets</span>
                   <span className="ml-auto bg-gray-50 px-2 py-0.5 rounded-lg text-xs text-gray-500">
                     {unresolvedCount}
                   </span>
@@ -184,11 +183,6 @@ export default function Sidebar({
                   <FaCircle className="mr-2.5 text-red-300 text-[10px]" />
                   <span className="font-medium">Resolved</span>
                   <span className="ml-auto bg-gray-50 px-2 py-0.5 rounded-lg text-xs text-gray-500">{ticketCounts.Resolved}</span>
-                </li>
-                <li className="flex items-center text-sm text-gray-700 px-3 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors" onClick={() => handleFilterClick('Closed')}>
-                  <FaCircle className="mr-2.5 text-gray-300 text-[10px]" />
-                  <span className="font-medium">Closed</span>
-                  <span className="ml-auto bg-gray-50 px-2 py-0.5 rounded-lg text-xs text-gray-500">{ticketCounts.Closed}</span>
                 </li>
               </ul>
             </div>

@@ -63,7 +63,6 @@ const Client = () => {
           Open: 0,
           "In Progress": 0,
           Resolved: 0,
-          Closed: 0,
         }}
       />
 

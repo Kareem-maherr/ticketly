@@ -45,8 +45,8 @@ const ClientInfo: React.FC<ClientInfoProps> = ({
         querySnapshot.forEach((doc) => {
           const ticket = doc.data();
           total++;
-          // Consider tickets as active if they're not resolved or closed
-          if (ticket.status !== 'Resolved' && ticket.status !== 'Closed') {
+          // Consider tickets as active if they're not resolved
+          if (ticket.status !== 'Resolved') {
             active++;
           }
           // If you have a cost field in your tickets, you can sum it here

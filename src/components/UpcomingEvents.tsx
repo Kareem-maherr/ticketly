@@ -40,7 +40,6 @@ const statusStyles = {
   'Open': 'bg-blue-100 text-blue-600',
   'In Progress': 'bg-purple-100 text-purple-600',
   'Resolved': 'bg-green-100 text-green-600',
-  'Closed': 'bg-gray-100 text-gray-600'
 };
 
 const UpcomingEvents: React.FC<UpcomingEventsProps> = ({ onNewTicket, isAdmin, showResolved }) => {
@@ -63,7 +62,7 @@ const UpcomingEvents: React.FC<UpcomingEventsProps> = ({ onNewTicket, isAdmin, s
           baseQuery = query(
             ticketsRef,
             where('ownerEmail', '==', auth.currentUser.email),
-            where('status', 'in', ['Resolved', 'Closed']),
+            where('status', 'in', ['Resolved']),
             orderBy('createdAt', 'desc')
           );
         } else {

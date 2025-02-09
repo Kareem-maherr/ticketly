@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FaFilter, FaMapMarkerAlt, FaFilePdf } from 'react-icons/fa';
 import TicketDetails from './TicketDetails';
 import PdfExportModal from './PdfExportModal';
+import generateOpenTicketsPdf from './OpenTicketsPdf';
 import { db } from '../config/firebase';
 import { collection, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
@@ -35,8 +36,7 @@ const priorityStyles: { [key: string]: string } = {
 const statusStyles: { [key: string]: string } = {
   'Open': 'bg-blue-100 text-blue-800',
   'In Progress': 'bg-purple-100 text-purple-800',
-  'Resolved': 'bg-green-100 text-green-800',
-  'Closed': 'bg-gray-100 text-gray-800'
+  'Resolved': 'bg-green-100 text-green-800'
 };
 
 export default function TicketList({ filter }: TicketListProps) {
@@ -69,6 +69,14 @@ export default function TicketList({ filter }: TicketListProps) {
     return () => unsubscribe();
   }, []);
 
+  const handleExportPdf = async () => {
+    try {
+      await generateOpenTicketsPdf(tickets);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    }
+  };
+
   return (
     <div className="flex-1 bg-gray-50 overflow-hidden flex flex-col">
       <div className="border-b border-gray-200 bg-white px-6 py-4">
@@ -89,9 +97,12 @@ export default function TicketList({ filter }: TicketListProps) {
               <FaFilePdf className="mr-2" />
               Export PDF
             </button>
-            <button className="flex items-center px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50">
-              <FaFilter className="mr-2" />
-              Add filter
+            <button 
+              onClick={handleExportPdf}
+              className="flex items-center px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+            >
+              <FaFilePdf className="mr-2" />
+              Export Open Tickets
             </button>
           </div>
         </div>

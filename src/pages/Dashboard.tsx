@@ -8,7 +8,6 @@ interface TicketCounts {
   Open: number;
   "In Progress": number;
   Resolved: number;
-  Closed: number;
 }
 
 export default function Dashboard() {
@@ -17,7 +16,6 @@ export default function Dashboard() {
     Open: 0,
     "In Progress": 0,
     Resolved: 0,
-    Closed: 0,
   });
 
   useEffect(() => {
@@ -29,7 +27,6 @@ export default function Dashboard() {
         Open: 0,
         "In Progress": 0,
         Resolved: 0,
-        Closed: 0,
       };
 
       snapshot.forEach((doc) => {
