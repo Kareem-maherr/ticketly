@@ -1,18 +1,74 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaPlus, FaCircle, FaBell, FaUser, FaHistory, FaTicketAlt, FaSignOutAlt } from 'react-icons/fa';
 import { getAuth, signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import Logo from './Logo';
+import { collection, query, where, getCountFromServer } from 'firebase/firestore';
+import { db } from '../config/firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
   isClientPage?: boolean;
   onNewTicket?: () => void;
+  onFilterSelect?: (filter: string | null) => void;
+  activeFilter?: string | null;
+  ticketCounts: {
+    Open: number;
+    'In Progress': number;
+    Resolved: number;
+    Closed: number;
+  };
+  onShowResolvedTickets?: (show: boolean) => void;
 }
 
-export default function Sidebar({ isClientPage = false, onNewTicket }: SidebarProps) {
+export default function Sidebar({ 
+  isClientPage = false, 
+  onNewTicket, 
+  onFilterSelect, 
+  activeFilter, 
+  ticketCounts,
+  onShowResolvedTickets 
+}: SidebarProps) {
   const auth = getAuth();
   const navigate = useNavigate();
   const currentUser = auth.currentUser;
+  const { currentUser: authUser } = useAuth();
+  const [resolvedCount, setResolvedCount] = useState(0);
+  const [unresolvedCount, setUnresolvedCount] = useState(0);
+  const [showingResolved, setShowingResolved] = useState(false);
+
+  useEffect(() => {
+    const fetchResolvedTicketsCount = async () => {
+      if (!authUser) return;
+
+      try {
+        const ticketsRef = collection(db, 'tickets');
+        const resolvedQuery = query(
+          ticketsRef,
+          where('ownerEmail', '==', authUser.email),
+          where('status', 'in', ['Resolved', 'Closed'])
+        );
+
+        const unresolvedQuery = query(
+          ticketsRef,
+          where('ownerEmail', '==', authUser.email),
+          where('status', 'in', ['Open', 'In Progress'])
+        );
+
+        const [resolvedSnapshot, unresolvedSnapshot] = await Promise.all([
+          getCountFromServer(resolvedQuery),
+          getCountFromServer(unresolvedQuery)
+        ]);
+
+        setResolvedCount(resolvedSnapshot.data().count);
+        setUnresolvedCount(unresolvedSnapshot.data().count);
+      } catch (error) {
+        console.error('Error fetching tickets count:', error);
+      }
+    };
+
+    fetchResolvedTicketsCount();
+  }, [authUser]);
 
   const handleLogout = async () => {
     try {
@@ -20,6 +76,30 @@ export default function Sidebar({ isClientPage = false, onNewTicket }: SidebarPr
       navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
+    }
+  };
+  
+  const handleFilterClick = (status: string) => {
+    if (onFilterSelect) {
+      if (activeFilter === status) {
+        onFilterSelect(null);
+      } else {
+        onFilterSelect(status);
+      }
+    }
+  };
+
+  const handlePastTicketsClick = () => {
+    setShowingResolved(true);
+    if (onShowResolvedTickets) {
+      onShowResolvedTickets(true);
+    }
+  };
+
+  const handleCurrentTicketsClick = () => {
+    setShowingResolved(false);
+    if (onShowResolvedTickets) {
+      onShowResolvedTickets(false);
     }
   };
 
@@ -59,39 +139,56 @@ export default function Sidebar({ isClientPage = false, onNewTicket }: SidebarPr
             <div>
               <h3 className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wider px-3">Tickets</h3>
               <ul className="space-y-1">
-                <li className="flex items-center text-sm text-gray-700 px-3 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors">
+                <li 
+                  onClick={handlePastTicketsClick}
+                  className={`flex items-center text-sm text-gray-700 px-3 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors
+                    ${showingResolved ? 'bg-gray-50' : ''}`}
+                >
                   <FaTicketAlt className="mr-2.5 text-red-500 text-[14px]" />
                   <span className="font-medium">Past Tickets</span>
-                  <span className="ml-auto bg-gray-50 px-2 py-0.5 rounded-lg text-xs text-gray-500">5</span>
+                  <span className="ml-auto bg-gray-50 px-2 py-0.5 rounded-lg text-xs text-gray-500">
+                    {resolvedCount}
+                  </span>
+                </li>
+                <li 
+                  onClick={handleCurrentTicketsClick}
+                  className={`flex items-center text-sm text-gray-700 px-3 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors
+                    ${!showingResolved ? 'bg-gray-50' : ''}`}
+                >
+                  <FaTicketAlt className="mr-2.5 text-green-500 text-[14px]" />
+                  <span className="font-medium">Current Tickets</span>
+                  <span className="ml-auto bg-gray-50 px-2 py-0.5 rounded-lg text-xs text-gray-500">
+                    {unresolvedCount}
+                  </span>
                 </li>
               </ul>
             </div>
           </div>
         ) : (
-          // Admin Page Elements
+          // Admin Page Elements - Status and Priority sections remain unchanged
           <>
             <div className="mb-8">
               <h3 className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wider px-3">Ticket Status</h3>
               <ul className="space-y-1">
-                <li className="flex items-center text-sm text-gray-700 px-3 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors">
+                <li className="flex items-center text-sm text-gray-700 px-3 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors" onClick={() => handleFilterClick('Open')}>
                   <FaCircle className="mr-2.5 text-red-500 text-[10px]" />
                   <span className="font-medium">Open</span>
-                  <span className="ml-auto bg-gray-50 px-2 py-0.5 rounded-lg text-xs text-gray-500">12</span>
+                  <span className="ml-auto bg-gray-50 px-2 py-0.5 rounded-lg text-xs text-gray-500">{ticketCounts.Open}</span>
                 </li>
-                <li className="flex items-center text-sm text-gray-700 px-3 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors">
+                <li className="flex items-center text-sm text-gray-700 px-3 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors" onClick={() => handleFilterClick('In Progress')}>
                   <FaCircle className="mr-2.5 text-red-400 text-[10px]" />
                   <span className="font-medium">In Progress</span>
-                  <span className="ml-auto bg-gray-50 px-2 py-0.5 rounded-lg text-xs text-gray-500">5</span>
+                  <span className="ml-auto bg-gray-50 px-2 py-0.5 rounded-lg text-xs text-gray-500">{ticketCounts['In Progress']}</span>
                 </li>
-                <li className="flex items-center text-sm text-gray-700 px-3 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors">
+                <li className="flex items-center text-sm text-gray-700 px-3 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors" onClick={() => handleFilterClick('Resolved')}>
                   <FaCircle className="mr-2.5 text-red-300 text-[10px]" />
                   <span className="font-medium">Resolved</span>
-                  <span className="ml-auto bg-gray-50 px-2 py-0.5 rounded-lg text-xs text-gray-500">8</span>
+                  <span className="ml-auto bg-gray-50 px-2 py-0.5 rounded-lg text-xs text-gray-500">{ticketCounts.Resolved}</span>
                 </li>
-                <li className="flex items-center text-sm text-gray-700 px-3 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors">
+                <li className="flex items-center text-sm text-gray-700 px-3 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors" onClick={() => handleFilterClick('Closed')}>
                   <FaCircle className="mr-2.5 text-gray-300 text-[10px]" />
                   <span className="font-medium">Closed</span>
-                  <span className="ml-auto bg-gray-50 px-2 py-0.5 rounded-lg text-xs text-gray-500">3</span>
+                  <span className="ml-auto bg-gray-50 px-2 py-0.5 rounded-lg text-xs text-gray-500">{ticketCounts.Closed}</span>
                 </li>
               </ul>
             </div>

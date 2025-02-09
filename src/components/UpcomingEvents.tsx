@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { FaCalendarAlt, FaPlus, FaInfo } from 'react-icons/fa';
 import { db } from '../config/firebase';
-import { collection, onSnapshot, query, orderBy, where, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, where, Timestamp, Query } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import TicketDetails from './TicketDetails';
+
 
 interface Ticket {
   id: string;
@@ -24,7 +25,9 @@ interface Ticket {
 interface UpcomingEventsProps {
   onNewTicket: () => void;
   isAdmin: boolean;
+  showResolved: boolean;
 }
+
 
 const severityStyles = {
   'Critical': 'bg-red-100 text-red-600',
@@ -40,10 +43,11 @@ const statusStyles = {
   'Closed': 'bg-gray-100 text-gray-600'
 };
 
-const UpcomingEvents: React.FC<UpcomingEventsProps> = ({ onNewTicket, isAdmin }) => {
+const UpcomingEvents: React.FC<UpcomingEventsProps> = ({ onNewTicket, isAdmin, showResolved }) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [showPastTickets, setShowPastTickets] = useState(false);
   const auth = getAuth();
 
   useEffect(() => {
@@ -51,26 +55,33 @@ const UpcomingEvents: React.FC<UpcomingEventsProps> = ({ onNewTicket, isAdmin })
 
     const fetchTickets = () => {
       const ticketsRef = collection(db, 'tickets');
-      let q;
+      let baseQuery: Query;
 
-      if (isAdmin) {
-        // Admin sees all tickets
-        q = query(ticketsRef, orderBy('createdAt', 'desc'));
-      } else if (auth.currentUser) {
-        // Client sees only their tickets
-        q = query(
-          ticketsRef,
-          where('ownerEmail', '==', auth.currentUser.email),
-          orderBy('createdAt', 'desc')
-        );
+      if (auth.currentUser) {
+        if (showResolved) {
+          // Show resolved and closed tickets when viewing past tickets
+          baseQuery = query(
+            ticketsRef,
+            where('ownerEmail', '==', auth.currentUser.email),
+            where('status', 'in', ['Resolved', 'Closed']),
+            orderBy('createdAt', 'desc')
+          );
+        } else {
+          // Show only Open and In Progress tickets
+          baseQuery = query(
+            ticketsRef,
+            where('ownerEmail', '==', auth.currentUser.email),
+            where('status', 'in', ['Open', 'In Progress']),
+            orderBy('createdAt', 'desc')
+          );
+        }
       } else {
-        // If no currentUser, don't fetch any tickets
         setTickets([]);
         setLoading(false);
         return;
       }
 
-      unsubscribe = onSnapshot(q, (snapshot) => {
+      unsubscribe = onSnapshot(baseQuery, (snapshot) => {
         const ticketData = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
@@ -85,7 +96,8 @@ const UpcomingEvents: React.FC<UpcomingEventsProps> = ({ onNewTicket, isAdmin })
 
     fetchTickets();
     return () => unsubscribe();
-  }, [isAdmin]);
+  }, [isAdmin, auth.currentUser, showResolved]);
+
 
   const handleViewDetails = (ticket: Ticket) => {
     setSelectedTicket(ticket);

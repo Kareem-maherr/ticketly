@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { FaFilter, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaFilter, FaMapMarkerAlt, FaFilePdf } from 'react-icons/fa';
 import TicketDetails from './TicketDetails';
+import PdfExportModal from './PdfExportModal';
 import { db } from '../config/firebase';
 import { collection, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 interface Ticket {
   id: string;
@@ -18,6 +20,11 @@ interface Ticket {
   createdAt: Timestamp;
 }
 
+interface TicketListProps {
+  filter: string | null;
+}
+
+
 const priorityStyles: { [key: string]: string } = {
   'Critical': 'bg-red-100 text-red-800',
   'High': 'bg-orange-100 text-orange-800',
@@ -32,9 +39,20 @@ const statusStyles: { [key: string]: string } = {
   'Closed': 'bg-gray-100 text-gray-800'
 };
 
-export default function TicketList() {
+export default function TicketList({ filter }: TicketListProps) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const auth = getAuth();
+
+  const filteredTickets = React.useMemo(() => {
+    // By default, hide resolved tickets unless specifically filtered
+    if (!filter) {
+      return tickets.filter(ticket => ticket.status !== 'Resolved');
+    }
+    // When a filter is selected, show only tickets matching that status
+    return tickets.filter(ticket => ticket.status === filter);
+  }, [tickets, filter]);
 
   useEffect(() => {
     const ticketsRef = collection(db, 'tickets');
@@ -56,15 +74,26 @@ export default function TicketList() {
       <div className="border-b border-gray-200 bg-white px-6 py-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
-            <h1 className="text-lg font-medium">All recent tickets</h1>
+            <h1 className="text-lg font-medium">
+            {filter ? `${filter} Tickets` : 'All Active Tickets'}
+            </h1>
             <div className="text-sm text-gray-500">
-              <span>{tickets.filter(t => t.status === 'Resolved' || t.status === 'Closed').length} of {tickets.length} completed</span>
+              <span>{filteredTickets.length} ticket{filteredTickets.length !== 1 ? 's' : ''}</span>
             </div>
           </div>
-          <button className="flex items-center px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50">
-            <FaFilter className="mr-2" />
-            Add filter
-          </button>
+          <div className="flex space-x-3">
+            <button
+              onClick={() => setIsPdfModalOpen(true)}
+              className="flex items-center px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+            >
+              <FaFilePdf className="mr-2" />
+              Export PDF
+            </button>
+            <button className="flex items-center px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50">
+              <FaFilter className="mr-2" />
+              Add filter
+            </button>
+          </div>
         </div>
       </div>
 
@@ -72,8 +101,8 @@ export default function TicketList() {
         <table className="min-w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sender</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sender</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Severity</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -83,13 +112,13 @@ export default function TicketList() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {tickets.map((ticket) => (
+            {filteredTickets.map((ticket) => (
               <tr key={ticket.id} className="hover:bg-gray-50 cursor-pointer">
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{ticket.sender}</div>
+                  <div className="text-sm font-medium text-gray-900">{ticket.title}</div>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="text-sm text-gray-900">{ticket.title}</div>
+                  <div className="text-sm text-gray-900">{ticket.sender}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center text-sm text-gray-500">
@@ -125,20 +154,25 @@ export default function TicketList() {
             ))}
           </tbody>
         </table>
-        {tickets.length === 0 && (
+        {filteredTickets.length === 0 && (
           <div className="text-center py-8 text-gray-500">
-            No tickets found. Create a new ticket to get started.
+            {filter ? `No ${filter.toLowerCase()} tickets found.` : 'No active tickets found.'}
           </div>
         )}
       </div>
 
       {selectedTicket && (
-        <TicketDetails
-          ticket={selectedTicket}
-          onClose={() => setSelectedTicket(null)}
-          isAdmin={true}  // This is the admin dashboard, so isAdmin should be true
+        <TicketDetails 
+          ticket={selectedTicket} 
+          onClose={() => setSelectedTicket(null)} 
+          isAdmin={auth.currentUser?.email?.endsWith('@arabemerge.com') || false}
         />
       )}
+      <PdfExportModal
+        isOpen={isPdfModalOpen}
+        onClose={() => setIsPdfModalOpen(false)}
+        tickets={tickets}
+      />
     </div>
   );
 }

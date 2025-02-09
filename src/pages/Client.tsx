@@ -21,6 +21,7 @@ const Client = () => {
   const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showResolvedTickets, setShowResolvedTickets] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -54,11 +55,21 @@ const Client = () => {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar isClientPage={true} onNewTicket={() => setIsNewTicketModalOpen(true)} />
-      
+      <Sidebar
+        isClientPage={true}
+        onNewTicket={() => setIsNewTicketModalOpen(true)}
+        onShowResolvedTickets={setShowResolvedTickets}
+        ticketCounts={{
+          Open: 0,
+          "In Progress": 0,
+          Resolved: 0,
+          Closed: 0,
+        }}
+      />
+
       <div className="flex-1 overflow-auto p-8">
         <div className="max-w-7xl mx-auto space-y-8">
-          {userData && (
+        {userData && (
             <ClientInfo
               name={userData.company}
               title="Client"
@@ -101,7 +112,11 @@ const Client = () => {
               />
             )}
             
-            <UpcomingEvents onNewTicket={() => setIsNewTicketModalOpen(true)} />
+            <UpcomingEvents 
+              onNewTicket={() => setIsNewTicketModalOpen(true)} 
+              isAdmin={false}
+              showResolved={showResolvedTickets}
+            />
           </div>
         </div>
       </div>

@@ -3,12 +3,12 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyC3X3g_J09IYUjQnz6eFdHUCr91SdG8-u0",
-  authDomain: "arabemerge-ticket.firebaseapp.com",
-  projectId: "arabemerge-ticket",
-  storageBucket: "arabemerge-ticket.firebasestorage.app",
-  messagingSenderId: "1081596127429",
-  appId: "1:1081596127429:web:d0a690799134bd032928ac"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);

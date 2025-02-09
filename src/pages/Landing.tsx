@@ -38,7 +38,7 @@ const Landing = () => {
         await setDoc(doc(db, 'users', user.uid), {
           email: user.email,
           role: role,
-          company: role === 'client' ? 'Primegate' : 'Arabemerge',
+          company: role === 'client' ? 'Arab Emergency' : 'Arabemerge',
           phone: '',
           address: '',
           website: '',

@@ -1,27 +1,84 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaCheck, FaLinkedin, FaInstagram, FaFacebook, FaYoutube, FaUser, FaTicketAlt, FaCalendarAlt, FaCreditCard } from 'react-icons/fa';
+import { db } from '../config/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ClientInfoProps {
   name: string;
   title: string;
   email: string;
   imageUrl?: string;
-  totalTickets?: number;
-  activeTickets?: number;
-  totalSpent?: number;
-  accountStatus?: string;
 }
 
 const ClientInfo: React.FC<ClientInfoProps> = ({
   name = "Franklin",
   title = "Web Designer",
   email = "info@gmail.com",
-  imageUrl = "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-  totalTickets = 24,
-  activeTickets = 12,
-  totalSpent = 2860,
-  accountStatus = "Active"
+  imageUrl = "/pdfSVG.svg"
 }) => {
+
+  const { currentUser } = useAuth();
+  const [ticketStats, setTicketStats] = useState({
+    totalTickets: 0,
+    activeTickets: 0,
+    totalSpent: 0
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTicketStats = async () => {
+      if (!currentUser) return;
+
+      try {
+        const ticketsRef = collection(db, 'tickets');
+        const userTicketsQuery = query(
+          ticketsRef,
+          where('ownerEmail', '==', currentUser.email)
+        );
+
+        const querySnapshot = await getDocs(userTicketsQuery);
+        let active = 0;
+        let total = 0;
+        let spent = 0;
+
+        querySnapshot.forEach((doc) => {
+          const ticket = doc.data();
+          total++;
+          // Consider tickets as active if they're not resolved or closed
+          if (ticket.status !== 'Resolved' && ticket.status !== 'Closed') {
+            active++;
+          }
+          // If you have a cost field in your tickets, you can sum it here
+          // For now, we'll assume each ticket costs $100 as an example
+          spent += 100; // Replace this with actual cost calculation if available
+        });
+
+        setTicketStats({
+          totalTickets: total,
+          activeTickets: active,
+          totalSpent: spent
+        });
+      } catch (error) {
+        console.error('Error fetching ticket stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTicketStats();
+  }, [currentUser]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-lg p-6 shadow-sm animate-pulse">
+          <div className="h-16 bg-gray-200 rounded-lg"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg p-6 shadow-sm">
@@ -51,24 +108,6 @@ const ClientInfo: React.FC<ClientInfoProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Stats */}
-
-          {/* Social Links */}
-          <div className="flex gap-2">
-            <button className="text-blue-600 hover:text-blue-700">
-              <FaLinkedin className="w-5 h-5" />
-            </button>
-            <button className="text-pink-600 hover:text-pink-700">
-              <FaInstagram className="w-5 h-5" />
-            </button>
-            <button className="text-blue-800 hover:text-blue-900">
-              <FaFacebook className="w-5 h-5" />
-            </button>
-            <button className="text-gray-700 hover:text-gray-800">
-              <FaYoutube className="w-5 h-5" />
-            </button>
-          </div>
         </div>
       </div>
 
@@ -81,7 +120,7 @@ const ClientInfo: React.FC<ClientInfoProps> = ({
             </div>
             <div className="ml-4">
               <p className="text-sm text-gray-500">Total Tickets</p>
-              <p className="text-xl font-semibold text-gray-800">{totalTickets}</p>
+              <p className="text-xl font-semibold text-gray-800">{ticketStats.totalTickets}</p>
             </div>
           </div>
         </div>
@@ -93,7 +132,7 @@ const ClientInfo: React.FC<ClientInfoProps> = ({
             </div>
             <div className="ml-4">
               <p className="text-sm text-gray-500">Active Tickets</p>
-              <p className="text-xl font-semibold text-gray-800">{activeTickets}</p>
+              <p className="text-xl font-semibold text-gray-800">{ticketStats.activeTickets}</p>
             </div>
           </div>
         </div>
@@ -104,8 +143,8 @@ const ClientInfo: React.FC<ClientInfoProps> = ({
               <FaCreditCard className="text-purple-600 text-xl" />
             </div>
             <div className="ml-4">
-              <p className="text-sm text-gray-500">Total Spent</p>
-              <p className="text-xl font-semibold text-gray-800">${totalSpent.toLocaleString()}</p>
+              <p className="text-sm text-gray-500">TEMPLATE CARD</p>
+              <p className="text-xl font-semibold text-gray-800">0</p>
             </div>
           </div>
         </div>
@@ -117,7 +156,7 @@ const ClientInfo: React.FC<ClientInfoProps> = ({
             </div>
             <div className="ml-4">
               <p className="text-sm text-gray-500">Account Status</p>
-              <p className="text-xl font-semibold text-gray-800">{accountStatus}</p>
+              <p className="text-xl font-semibold text-gray-800">Active</p>
             </div>
           </div>
         </div>

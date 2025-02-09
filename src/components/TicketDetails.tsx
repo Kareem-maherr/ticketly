@@ -1,8 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { FaMapMarkerAlt, FaClock, FaUser, FaBox, FaTimes, FaEdit, FaPaperPlane } from 'react-icons/fa';
-import { doc, updateDoc, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore';
-import { db } from '../config/firebase';
-import { getAuth } from 'firebase/auth';
+import React, { useState, useEffect } from "react";
+import {
+  FaMapMarkerAlt,
+  FaClock,
+  FaUser,
+  FaBox,
+  FaTimes,
+  FaEdit,
+  FaPaperPlane,
+} from "react-icons/fa";
+import {
+  doc,
+  updateDoc,
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp,
+} from "firebase/firestore";
+import { db } from "../config/firebase";
+import { getAuth } from "firebase/auth";
 
 interface Message {
   id: string;
@@ -33,48 +50,52 @@ interface TicketDetailsProps {
   isAdmin: boolean;
 }
 
-const severityOptions = ['Low', 'Medium', 'High', 'Critical'] as const;
-const statusOptions = ['Open', 'In Progress', 'Resolved', 'Closed'] as const;
+const severityOptions = ["Low", "Medium", "High", "Critical"] as const;
+const statusOptions = ["Open", "In Progress", "Resolved", "Closed"] as const;
 
 const severityStyles = {
-  'Critical': 'bg-red-100 text-red-800',
-  'High': 'bg-orange-100 text-orange-800',
-  'Medium': 'bg-yellow-100 text-yellow-800',
-  'Low': 'bg-green-100 text-green-800'
+  Critical: "bg-red-100 text-red-800",
+  High: "bg-orange-100 text-orange-800",
+  Medium: "bg-yellow-100 text-yellow-800",
+  Low: "bg-green-100 text-green-800",
 };
 
 const statusStyles = {
-  'Open': 'bg-blue-100 text-blue-800',
-  'In Progress': 'bg-purple-100 text-purple-800',
-  'Resolved': 'bg-green-100 text-green-800',
-  'Closed': 'bg-gray-100 text-gray-800'
+  Open: "bg-blue-100 text-blue-800",
+  "In Progress": "bg-purple-100 text-purple-800",
+  Resolved: "bg-green-100 text-green-800",
+  Closed: "bg-gray-100 text-gray-800",
 };
 
-export default function TicketDetails({ ticket, onClose, isAdmin }: TicketDetailsProps) {
+export default function TicketDetails({
+  ticket,
+  onClose,
+  isAdmin,
+}: TicketDetailsProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
   const auth = getAuth();
-  
+
   const [editedTicket, setEditedTicket] = useState({
     severity: ticket.severity,
     status: ticket.status,
     title: ticket.title,
     location: ticket.location,
     quantity: ticket.quantity,
-    notes: ticket.notes
+    notes: ticket.notes,
   });
 
   useEffect(() => {
-    const messagesRef = collection(db, 'tickets', ticket.id, 'messages');
-    const q = query(messagesRef, orderBy('timestamp', 'asc'));
+    const messagesRef = collection(db, "tickets", ticket.id, "messages");
+    const q = query(messagesRef, orderBy("timestamp", "asc"));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const messageData = snapshot.docs.map(doc => ({
+      const messageData = snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       })) as Message[];
       setMessages(messageData);
     });
@@ -84,17 +105,17 @@ export default function TicketDetails({ ticket, onClose, isAdmin }: TicketDetail
 
   const handleUpdateTicket = async () => {
     if (!isAdmin) {
-      alert('Only administrators can modify tickets');
+      alert("Only administrators can modify tickets");
       return;
     }
 
     try {
       setLoading(true);
-      const ticketRef = doc(db, 'tickets', ticket.id);
+      const ticketRef = doc(db, "tickets", ticket.id);
       await updateDoc(ticketRef, editedTicket);
       setIsEditing(false);
     } catch (error) {
-      console.error('Error updating ticket:', error);
+      console.error("Error updating ticket:", error);
     } finally {
       setLoading(false);
     }
@@ -106,16 +127,16 @@ export default function TicketDetails({ ticket, onClose, isAdmin }: TicketDetail
 
     try {
       setSendingMessage(true);
-      const messagesRef = collection(db, 'tickets', ticket.id, 'messages');
+      const messagesRef = collection(db, "tickets", ticket.id, "messages");
       await addDoc(messagesRef, {
         content: newMessage.trim(),
         sender: auth.currentUser.email,
         timestamp: serverTimestamp(),
-        isAdmin: isAdmin || false // Ensure isAdmin is always a boolean
+        isAdmin: isAdmin || false, // Ensure isAdmin is always a boolean
       });
-      setNewMessage('');
+      setNewMessage("");
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error("Error sending message:", error);
     } finally {
       setSendingMessage(false);
     }
@@ -125,8 +146,13 @@ export default function TicketDetails({ ticket, onClose, isAdmin }: TicketDetail
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
       <div className="relative top-20 mx-auto p-5 border w-[800px] shadow-lg rounded-lg bg-white">
         <div className="flex justify-between items-start mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">{ticket.title}</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <h2 className="text-xl font-semibold text-gray-900">
+            {ticket.title}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
             <FaTimes className="text-xl" />
           </button>
         </div>
@@ -137,34 +163,38 @@ export default function TicketDetails({ ticket, onClose, isAdmin }: TicketDetail
             <>
               <select
                 value={editedTicket.severity}
-                onChange={(e) => setEditedTicket({ ...editedTicket, severity: e.target.value })}
+                onChange={(e) =>
+                  setEditedTicket({ ...editedTicket, severity: e.target.value })
+                }
                 className="px-3 py-1 text-sm font-semibold rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={!isAdmin}
               >
                 {severityOptions.map((option) => (
-                  <option key={option} value={option}>{option}</option>
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
                 ))}
               </select>
               <select
                 value={editedTicket.status}
-                onChange={(e) => setEditedTicket({ ...editedTicket, status: e.target.value })}
+                onChange={(e) =>
+                  setEditedTicket({ ...editedTicket, status: e.target.value })
+                }
                 className="px-3 py-1 text-sm font-semibold rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={!isAdmin}
               >
                 {statusOptions.map((option) => (
-                  <option key={option} value={option}>{option}</option>
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
                 ))}
               </select>
               <div className="flex space-x-2">
-                {isAdmin && (
-                  <button
-                    onClick={handleUpdateTicket}
-                    disabled={loading}
-                    className="px-3 py-1 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {loading ? 'Updating...' : 'Save'}
-                  </button>
-                )}
+                <button
+                  onClick={handleUpdateTicket}
+                  disabled={loading}
+                  className="px-3 py-1 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {loading ? "Updating..." : "Save"}
+                </button>
                 <button
                   onClick={() => {
                     setIsEditing(false);
@@ -174,7 +204,7 @@ export default function TicketDetails({ ticket, onClose, isAdmin }: TicketDetail
                       title: ticket.title,
                       location: ticket.location,
                       quantity: ticket.quantity,
-                      notes: ticket.notes
+                      notes: ticket.notes,
                     });
                   }}
                   className="px-3 py-1 text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
@@ -185,16 +215,24 @@ export default function TicketDetails({ ticket, onClose, isAdmin }: TicketDetail
             </>
           ) : (
             <>
-              <span className={`px-3 py-1 text-sm font-semibold rounded-full ${severityStyles[ticket.severity]}`}>
+              <span
+                className={`px-3 py-1 text-sm font-semibold rounded-full ${
+                  severityStyles[ticket.severity]
+                }`}
+              >
                 {ticket.severity}
               </span>
-              <span className={`px-3 py-1 text-sm font-semibold rounded-full ${statusStyles[ticket.status]}`}>
+              <span
+                className={`px-3 py-1 text-sm font-semibold rounded-full ${
+                  statusStyles[ticket.status]
+                }`}
+              >
                 {ticket.status}
               </span>
-              {isAdmin && (
+              {isAdmin && ( // Made this condition more explicit
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="flex items-center px-3 py-1 text-sm font-semibold text-blue-600 hover:text-blue-700"
+                  className="flex items-center px-3 py-1 text-sm font-semibold text-blue-600 hover:text-blue-700 bg-white rounded-lg shadow-sm"
                 >
                   <FaEdit className="mr-1" />
                   Edit Status
@@ -212,7 +250,9 @@ export default function TicketDetails({ ticket, onClose, isAdmin }: TicketDetail
           {/* Sender Information */}
           <div className="col-span-1">
             <div className="bg-gray-50 p-4 rounded-lg mb-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Ticket Information</h3>
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">
+                Ticket Information
+              </h3>
               <div className="space-y-3">
                 <div className="flex items-center text-sm">
                   <FaUser className="text-gray-400 mr-2" />
@@ -224,21 +264,29 @@ export default function TicketDetails({ ticket, onClose, isAdmin }: TicketDetail
                 </div>
                 <div className="flex items-center text-sm">
                   <FaBox className="text-gray-400 mr-2" />
-                  <span className="text-gray-900">Quantity: {ticket.quantity}</span>
+                  <span className="text-gray-900">
+                    Quantity: {ticket.quantity}
+                  </span>
                 </div>
                 <div className="flex items-center text-sm">
                   <FaClock className="text-gray-400 mr-2" />
-                  <span className="text-gray-900">{ticket.date} • {ticket.time}</span>
+                  <span className="text-gray-900">
+                    {ticket.date} • {ticket.time}
+                  </span>
                 </div>
               </div>
             </div>
 
             {isEditing ? (
               <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">Notes</h3>
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                  Notes
+                </h3>
                 <textarea
                   value={editedTicket.notes}
-                  onChange={(e) => setEditedTicket({ ...editedTicket, notes: e.target.value })}
+                  onChange={(e) =>
+                    setEditedTicket({ ...editedTicket, notes: e.target.value })
+                  }
                   className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   rows={3}
                   disabled={!isAdmin}
@@ -246,8 +294,12 @@ export default function TicketDetails({ ticket, onClose, isAdmin }: TicketDetail
               </div>
             ) : (
               <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">Notes</h3>
-                <p className="text-sm text-gray-600 whitespace-pre-wrap">{ticket.notes}</p>
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                  Notes
+                </h3>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                  {ticket.notes}
+                </p>
               </div>
             )}
           </div>
@@ -255,22 +307,27 @@ export default function TicketDetails({ ticket, onClose, isAdmin }: TicketDetail
           {/* Messages Section */}
           <div className="col-span-2 flex flex-col">
             <div className="bg-gray-50 p-4 rounded-lg flex-1 mb-4 max-h-[400px] overflow-y-auto">
-              <h3 className="text-sm font-semibold text-gray-700 mb-4">Conversation</h3>
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">
+                Conversation
+              </h3>
               <div className="space-y-4">
                 {messages.map((message) => (
                   <div
                     key={message.id}
-                    className={`flex ${message.isAdmin ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${
+                      message.isAdmin ? "justify-end" : "justify-start"
+                    }`}
                   >
                     <div
                       className={`max-w-[80%] rounded-lg p-3 ${
                         message.isAdmin
-                          ? 'bg-blue-100 text-blue-900'
-                          : 'bg-gray-100 text-gray-900'
+                          ? "bg-blue-100 text-blue-900"
+                          : "bg-gray-100 text-gray-900"
                       }`}
                     >
                       <div className="text-xs font-medium mb-1">
-                        {message.sender} • {message.timestamp?.toDate().toLocaleString()}
+                        {message.sender} •{" "}
+                        {message.timestamp?.toDate().toLocaleString()}
                       </div>
                       <div className="text-sm">{message.content}</div>
                     </div>
@@ -300,7 +357,7 @@ export default function TicketDetails({ ticket, onClose, isAdmin }: TicketDetail
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
               >
                 <FaPaperPlane className="text-sm" />
-                {sendingMessage ? 'Sending...' : 'Send'}
+                {sendingMessage ? "Sending..." : "Send"}
               </button>
             </form>
           </div>
