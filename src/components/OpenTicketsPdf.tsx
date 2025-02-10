@@ -1,129 +1,194 @@
-import html2pdf from 'html2pdf.js';
-import { Ticket } from '../types/ticket';
+import html2pdf from "html2pdf.js";
+import { Ticket } from "../types/ticket";
 
 const generateOpenTicketsPdf = async (tickets: Ticket[]) => {
-  const openTickets = tickets.filter(ticket => ticket.status === 'Open');
+  const openTickets = tickets.filter((ticket) => ticket.status === "Open");
 
   if (!openTickets || openTickets.length === 0) {
-    console.error('No open tickets available');
+    console.error("No open tickets available");
     return;
   }
 
-  const container = document.createElement('div');
-  
+  const container = document.createElement("div");
+
   const content = `
     <style>
+      @page {
+        margin: 1cm;
+      }
+      
       .pdf-container {
-        padding: 30px;
         font-family: Arial, sans-serif;
-        background: white;
-      }
-      .header {
-        margin-bottom: 30px;
-        text-align: center;
-      }
-      .title {
-        font-size: 24px;
         color: #333;
-        margin: 0 0 10px 0;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
       }
-      .subtitle {
-        color: #666;
+
+      .header {
+        background-color: #EE1C25;
+        color: white;
+        padding: 20px;
+        margin-bottom: 30px;
+        border-radius: 5px;
+      }
+
+      .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .title {
+        font-size: 32px;
         margin: 0;
+      }
+
+      .date {
         font-size: 14px;
       }
-      .tickets-table {
+
+      .info-section {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 30px;
+      }
+
+      .info-box {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 5px;
+        width: 45%;
+      }
+
+      .info-box h3 {
+        margin: 0 0 10px 0;
+        color: #EE1C25;
+      }
+
+      .info-box p {
+        margin: 5px 0;
+        line-height: 1.4;
+      }
+
+      table {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 20px;
-        font-size: 10px;
+        margin-bottom: 30px;
       }
-      .tickets-table th,
-      .tickets-table td {
-        padding: 8px 6px;
+
+      th {
+        background-color: #EE1C25;
+        color: white;
+        padding: 12px;
         text-align: left;
-        border: 1px solid #ddd;
-        word-break: break-word;
       }
-      .tickets-table th {
+
+      td {
+        padding: 12px;
+        border-bottom: 1px solid #ddd;
+      }
+
+      tr:nth-child(even) {
         background-color: #f8f9fa;
+      }
+
+      .total-section {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 20px;
+      }
+
+      .total-box {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 5px;
+        width: 300px;
+      }
+
+      .total-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 5px 0;
+      }
+
+      .total-row.final {
         font-weight: bold;
-        color: #333;
-        white-space: nowrap;
-      }
-      .tickets-table tr:nth-child(even) {
-        background-color: #f9f9f9;
-      }
-      .severity {
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-weight: 500;
-      }
-      .severity-critical {
-        background-color: #fee2e2;
-        color: #dc2626;
-      }
-      .severity-high {
-        background-color: #ffedd5;
-        color: #ea580c;
-      }
-      .severity-medium {
-        background-color: #fef9c3;
-        color: #ca8a04;
-      }
-      .severity-low {
-        background-color: #dcfce7;
-        color: #16a34a;
-      }
-      .footer {
-        margin-top: 30px;
-        text-align: center;
-        font-size: 12px;
-        color: #666;
+        border-top: 2px solid #ddd;
+        padding-top: 10px;
+        margin-top: 10px;
       }
     </style>
+
     <div class="pdf-container">
       <div class="header">
-        <h1 class="title">Open Tickets Report</h1>
-        <p class="subtitle">Generated on: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
-        <p class="subtitle">Total Open Tickets: ${openTickets.length}</p>
+        <div class="header-content">
+          <h1 class="title">Open Tickets</h1>
+          <div class="date">Date: ${new Date().toLocaleDateString()}</div>
+        </div>
       </div>
 
-      <table class="tickets-table">
+      <div class="info-section">
+        <div class="info-box">
+          <h3>Invoiced To:</h3>
+          <p>
+            Alex Farnandes<br>
+            450 E 96th St, Indianapolis, WRHX+8Q<br>
+            IN 46240, United States
+          </p>
+        </div>
+        <div class="info-box">
+          <h3>Pay To:</h3>
+          <p>
+            Payment Info:<br>
+            Account: 1234 5678 9012<br>
+            A/C Name: Alex Farnandes<br>
+            Email: info@invar.com
+          </p>
+        </div>
+      </div>
+
+      <table>
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Title</th>
-            <th>Sender</th>
-            <th>Location</th>
-            <th>Date</th>
-            <th>Time</th>
-            <th>Severity</th>
-            <th>Notes</th>
+            <th>SL</th>
+            <th>Item Description</th>
+            <th>Price</th>
+            <th>Qty</th>
+            <th>Total</th>
           </tr>
         </thead>
         <tbody>
-          ${openTickets.map(ticket => `
+          ${openTickets.map((ticket, index) => `
             <tr>
-              <td>#${ticket.id}</td>
+              <td>${(index + 1).toString().padStart(2, '0')}</td>
               <td>${ticket.title}</td>
-              <td>${ticket.sender}</td>
-              <td>${ticket.location}</td>
-              <td>${ticket.date}</td>
-              <td>${ticket.time}</td>
-              <td>
-                <span class="severity severity-${ticket.severity.toLowerCase()}">
-                  ${ticket.severity}
-                </span>
-              </td>
-              <td>${ticket.notes || '-'}</td>
+              <td>$${ticket.price?.toFixed(2) || '0.00'}</td>
+              <td>${ticket.quantity || 1}</td>
+              <td>$${((ticket.price || 0) * (ticket.quantity || 1)).toFixed(2)}</td>
             </tr>
           `).join('')}
         </tbody>
       </table>
 
-      <div class="footer">
-        <p>Arab Emergency Ticketing System - Confidential</p>
+      <div class="total-section">
+        <div class="total-box">
+          <div class="total-row">
+            <span>Subtotal:</span>
+            <span>$${openTickets.reduce((sum, ticket) => 
+              sum + ((ticket.price || 0) * (ticket.quantity || 1)), 0).toFixed(2)}</span>
+          </div>
+          <div class="total-row">
+            <span>Tax (10%):</span>
+            <span>$${(openTickets.reduce((sum, ticket) => 
+              sum + ((ticket.price || 0) * (ticket.quantity || 1)), 0) * 0.1).toFixed(2)}</span>
+          </div>
+          <div class="total-row final">
+            <span>Total:</span>
+            <span>$${(openTickets.reduce((sum, ticket) => 
+              sum + ((ticket.price || 0) * (ticket.quantity || 1)), 0) * 1.1).toFixed(2)}</span>
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -133,15 +198,15 @@ const generateOpenTicketsPdf = async (tickets: Ticket[]) => {
 
   try {
     const opt = {
-      margin: 0.5,
-      filename: 'open-tickets-report.pdf',
-      image: { type: 'jpeg', quality: 0.98 },
+      margin: 1,
+      filename: "open-tickets-report.pdf",
+      image: { type: "jpeg", quality: 0.98 },
       html2canvas: { 
         scale: 2,
         useCORS: true,
-        logging: false
+        logging: false,
       },
-      jsPDF: { unit: 'cm', format: 'a4', orientation: 'portrait' }
+      jsPDF: { unit: "cm", format: "a4", orientation: "portrait" }
     };
 
     await html2pdf().from(container).set(opt).save();

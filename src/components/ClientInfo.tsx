@@ -81,7 +81,7 @@ const ClientInfo: React.FC<ClientInfoProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg p-6 shadow-sm">
+      <div className="bg-sky-100 rounded-lg p-6 shadow-sm">
         <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
           {/* Profile Image and Info */}
           <div className="flex items-center gap-4 flex-1">
@@ -131,8 +131,8 @@ const ClientInfo: React.FC<ClientInfoProps> = ({
               <FaCalendarAlt className="text-green-600 text-xl" />
             </div>
             <div className="ml-4">
-              <p className="text-sm text-gray-500">Active Tickets</p>
-              <p className="text-xl font-semibold text-gray-800">{ticketStats.activeTickets}</p>
+              <p className="text-sm text-gray-500">Resolved Tickets</p>
+              <p className="text-xl font-semibold text-gray-800">{ticketStats.activeTickets - ticketStats.totalTickets}</p>
             </div>
           </div>
         </div>
@@ -143,8 +143,8 @@ const ClientInfo: React.FC<ClientInfoProps> = ({
               <FaCreditCard className="text-purple-600 text-xl" />
             </div>
             <div className="ml-4">
-              <p className="text-sm text-gray-500">TEMPLATE CARD</p>
-              <p className="text-xl font-semibold text-gray-800">0</p>
+              <p className="text-sm text-gray-500">Active Tickets</p>
+              <p className="text-xl font-semibold text-gray-800">{ticketStats.activeTickets}</p>
             </div>
           </div>
         </div>

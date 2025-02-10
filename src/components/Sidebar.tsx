@@ -119,18 +119,7 @@ export default function Sidebar({
               <ul className="space-y-1">
                 <li className="flex items-center text-sm text-gray-700 px-3 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors">
                   <FaUser className="mr-2.5 text-red-500 text-[14px]" />
-                  <span className="font-medium">Account Details</span>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wider px-3">Communication</h3>
-              <ul className="space-y-1">
-                <li className="flex items-center text-sm text-gray-700 px-3 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors">
-                  <FaHistory className="mr-2.5 text-red-500 text-[14px]" />
-                  <span className="font-medium">Past Messages</span>
-                  <span className="ml-auto bg-gray-50 px-2 py-0.5 rounded-lg text-xs text-gray-500">3</span>
+                  <span className="font-medium">""</span>
                 </li>
               </ul>
             </div>
@@ -144,7 +133,7 @@ export default function Sidebar({
                     ${showingResolved ? 'bg-gray-50' : ''}`}
                 >
                   <FaTicketAlt className="mr-2.5 text-red-500 text-[14px]" />
-                  <span className="font-medium">Past Tickets</span>
+                  <span className="font-medium">Resolved Tickets</span>
                   <span className="ml-auto bg-gray-50 px-2 py-0.5 rounded-lg text-xs text-gray-500">
                     {resolvedCount}
                   </span>

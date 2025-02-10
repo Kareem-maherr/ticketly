@@ -1,10 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TicketFormData } from '../types/TicketForm';
-import { db } from '../config/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { db, auth } from '../config/firebase';
 
 interface NewTicketModalProps {
   isOpen: boolean;
@@ -19,33 +18,84 @@ const NewTicketModal: React.FC<NewTicketModalProps> = ({
   onSubmit,
   initialData
 }) => {
-  const auth = getAuth();
   const [ticketData, setTicketData] = React.useState<TicketFormData>({
     ...initialData,
     date: new Date().toISOString().split('T')[0],
+    time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
     severity: initialData.severity || 'Low',
-    sender: auth.currentUser?.email || ''
+    sender: auth.currentUser?.email || '',
+    company: '',
+    ticketDetails: '',
+    details: '',
+    notes: '',
+    quantity: '',
+    createdAt: null
   });
+
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth.currentUser) return;
+
     try {
-      if (!auth.currentUser?.email) {
-        throw new Error('No authenticated user found');
-      }
+      setSubmitting(true);
+
+      // Fetch user's company
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('email', '==', auth.currentUser.email));
+      const userSnapshot = await getDocs(q);
+      const userCompany = !userSnapshot.empty ? userSnapshot.docs[0].data().company : 'N/A';
 
       const ticketsRef = collection(db, 'tickets');
-      await addDoc(ticketsRef, {
-        ...ticketData,
-        ownerEmail: auth.currentUser.email,
-        ownerId: auth.currentUser.uid,
-        createdAt: serverTimestamp(),
+      const newTicket = {
+        title: ticketData.title,
+        sender: auth.currentUser.email,
+        company: userCompany,
+        location: ticketData.location,
+        date: ticketData.date,
+        time: ticketData.time,
+        severity: ticketData.severity,
         status: 'Open',
+        ticketDetails: ticketData.ticketDetails,
+        notes: '',
+        createdAt: serverTimestamp(),
+        ownerEmail: '',
+        ownerId: '',
+        hasUnreadMessages: false
+      };
+
+      const docRef = await addDoc(ticketsRef, newTicket);
+
+      // Create notification for new ticket
+      const notificationsRef = collection(db, 'notifications');
+      await addDoc(notificationsRef, {
+        ticketId: docRef.id,
+        title: 'New Ticket Created',
+        message: `New ticket "${ticketData.title}" created by ${auth.currentUser.email} from ${userCompany}`,
+        read: false,
+        createdAt: serverTimestamp(),
+        type: 'ticket'
       });
-      
+
       onClose();
+      setTicketData({
+        ...initialData,
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+        severity: 'Low',
+        sender: auth.currentUser.email || '',
+        company: '',
+        ticketDetails: '',
+        details: '',
+        notes: '',
+        quantity: '',
+        createdAt: null
+      });
     } catch (error) {
       console.error('Error creating ticket:', error);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -78,12 +128,12 @@ const NewTicketModal: React.FC<NewTicketModalProps> = ({
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-                  Title
+                <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
+                  Subject
                 </label>
                 <input
                   type="text"
-                  id="title"
+                  id="subject"
                   value={ticketData.title}
                   onChange={(e) => setTicketData({ ...ticketData, title: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -99,6 +149,19 @@ const NewTicketModal: React.FC<NewTicketModalProps> = ({
                   type="text"
                   id="sender"
                   value={ticketData.sender}
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
+                  Company
+                </label>
+                <input
+                  type="text"
+                  id="company"
+                  value={ticketData.company}
                   readOnly
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
                 />
@@ -139,9 +202,8 @@ const NewTicketModal: React.FC<NewTicketModalProps> = ({
                     type="time"
                     id="time"
                     value={ticketData.time}
-                    onChange={(e) => setTicketData({ ...ticketData, time: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
+                    disabled
                   />
                 </div>
               </div>
@@ -165,20 +227,17 @@ const NewTicketModal: React.FC<NewTicketModalProps> = ({
               </div>
 
               <div>
-                <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">
-                  Quantity
+                <label htmlFor="ticketDetails" className="block text-sm font-medium text-gray-700 mb-1">
+                  Details
                 </label>
-                <input
-                  type="number"
-                  id="quantity"
-                  min="1"
-                  value={ticketData.quantity}
-                  onChange={(e) => setTicketData({ ...ticketData, quantity: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
+                <textarea
+                  id="ticketDetails"
+                  value={ticketData.ticketDetails}
+                  onChange={(e) => setTicketData({ ...ticketData, ticketDetails: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 />
               </div>
-
               <div>
                 <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
                   Notes
@@ -202,9 +261,10 @@ const NewTicketModal: React.FC<NewTicketModalProps> = ({
                 </button>
                 <button
                   type="submit"
+                  disabled={submitting}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Create Ticket
+                  {submitting ? 'Creating...' : 'Create Ticket'}
                 </button>
               </div>
             </form>

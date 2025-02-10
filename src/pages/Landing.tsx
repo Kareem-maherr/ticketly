@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import Logo from '../components/Logo';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../config/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -21,6 +21,7 @@ const Landing = () => {
       const result = await login(email, password);
       if (result) {
         const user = result.user;
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
         const token = await user.getIdToken();
         const isAdmin = user.email?.endsWith('@arabemerge.com') || false;
         
@@ -34,15 +35,19 @@ const Landing = () => {
           return;
         }
 
-        // Create or update user document in Firestore
-        await setDoc(doc(db, 'users', user.uid), {
-          email: user.email,
-          role: role,
-          company: role === 'client' ? 'Arab Emergency' : 'Arabemerge',
-          phone: '',
-          address: '',
-          website: '',
-        }, { merge: true });
+        // Check if user document exists first
+        
+        // Only create the document if it doesn't exist
+        if (!userDoc.exists()) {
+          await setDoc(doc(db, 'users', user.uid), {
+            email: user.email,
+            role: role,
+            company: role === 'client' ? '' : 'Arabemerge',
+            phone: '',
+            address: '',
+            website: '',
+          });
+        }
 
         navigate(role === 'admin' ? '/admin' : '/client');
       }

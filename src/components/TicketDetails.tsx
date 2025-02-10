@@ -7,6 +7,7 @@ import {
   FaTimes,
   FaEdit,
   FaPaperPlane,
+  FaBuilding
 } from "react-icons/fa";
 import {
   doc,
@@ -17,6 +18,7 @@ import {
   query,
   orderBy,
   serverTimestamp,
+  where
 } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { getAuth } from "firebase/auth";
@@ -33,15 +35,20 @@ interface Ticket {
   id: string;
   title: string;
   sender: string;
+  company: string;
   location: string;
   date: string;
   time: string;
   severity: string;
   status: string;
   quantity: string;
+  ticketDetails: string;
   notes: string;
   ownerEmail: string;
   ownerId: string;
+  hasUnreadMessages?: boolean;
+  lastMessageAt?: any;
+  lastMessageBy?: string;
 }
 
 interface TicketDetailsProps {
@@ -79,13 +86,51 @@ export default function TicketDetails({
   const auth = getAuth();
 
   const [editedTicket, setEditedTicket] = useState({
-    severity: ticket.severity,
-    status: ticket.status,
     title: ticket.title,
     location: ticket.location,
-    quantity: ticket.quantity,
+    severity: ticket.severity,
+    status: ticket.status,
     notes: ticket.notes,
+    ticketDetails: ticket.ticketDetails || '',
+    quantity: ticket.quantity
   });
+
+  const [senderCompany, setSenderCompany] = useState<string>('');
+
+  useEffect(() => {
+    setEditedTicket({
+      title: ticket.title,
+      location: ticket.location,
+      severity: ticket.severity,
+      status: ticket.status,
+      notes: ticket.notes,
+      ticketDetails: ticket.ticketDetails || '',
+      quantity: ticket.quantity
+    });
+  }, [ticket]);
+
+  useEffect(() => {
+    const fetchSenderCompany = async () => {
+      try {
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('email', '==', ticket.sender));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+          if (!snapshot.empty) {
+            const userData = snapshot.docs[0].data();
+            setSenderCompany(userData.company || 'N/A');
+          }
+        });
+        return unsubscribe;
+      } catch (error) {
+        console.error('Error fetching sender company:', error);
+        return () => {};
+      }
+    };
+
+    if (ticket.sender) {
+      fetchSenderCompany();
+    }
+  }, [ticket.sender]);
 
   useEffect(() => {
     const messagesRef = collection(db, "tickets", ticket.id, "messages");
@@ -102,6 +147,17 @@ export default function TicketDetails({
     return () => unsubscribe();
   }, [ticket.id]);
 
+  useEffect(() => {
+    if (ticket) {
+      const ticketRef = doc(db, 'tickets', ticket.id);
+      updateDoc(ticketRef, {
+        hasUnreadMessages: false
+      }).catch(error => {
+        console.error('Error updating unread status:', error);
+      });
+    }
+  }, [ticket]);
+
   const handleUpdateTicket = async () => {
     if (!isAdmin) {
       alert("Only administrators can modify tickets");
@@ -109,33 +165,61 @@ export default function TicketDetails({
     }
 
     try {
-      setLoading(true);
-      const ticketRef = doc(db, "tickets", ticket.id);
-      await updateDoc(ticketRef, editedTicket);
+      const ticketRef = doc(db, 'tickets', ticket.id);
+      await updateDoc(ticketRef, {
+        title: editedTicket.title,
+        location: editedTicket.location,
+        severity: editedTicket.severity,
+        status: editedTicket.status,
+        notes: editedTicket.notes,
+        ticketDetails: editedTicket.ticketDetails,
+        quantity: editedTicket.quantity,
+        updatedAt: serverTimestamp()
+      });
       setIsEditing(false);
     } catch (error) {
-      console.error("Error updating ticket:", error);
-    } finally {
-      setLoading(false);
+      console.error('Error updating ticket:', error);
     }
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !auth.currentUser) return;
+    if (!newMessage.trim() || sendingMessage) return;
 
+    setSendingMessage(true);
     try {
-      setSendingMessage(true);
-      const messagesRef = collection(db, "tickets", ticket.id, "messages");
-      await addDoc(messagesRef, {
-        content: newMessage.trim(),
-        sender: auth.currentUser.email,
+      // Add message to messages collection
+      const messagesRef = collection(db, 'tickets', ticket.id, 'messages');
+      const messageDoc = await addDoc(messagesRef, {
+        content: newMessage,
+        sender: auth.currentUser?.email || 'Unknown',
+        isAdmin: true,
         timestamp: serverTimestamp(),
-        isAdmin: isAdmin || false, // Ensure isAdmin is always a boolean
       });
-      setNewMessage("");
+
+      // Update ticket with unread message flag
+      const ticketRef = doc(db, 'tickets', ticket.id);
+      await updateDoc(ticketRef, {
+        hasUnreadMessages: true,
+        lastMessageAt: serverTimestamp(),
+        lastMessageBy: auth.currentUser?.email || 'Unknown'
+      });
+
+      // Create notification
+      const notificationsRef = collection(db, 'notifications');
+      await addDoc(notificationsRef, {
+        ticketId: ticket.id,
+        title: `New Message in Ticket #${ticket.id}`,
+        message: `${auth.currentUser?.email || 'Unknown'} sent: ${newMessage.slice(0, 100)}${newMessage.length > 100 ? '...' : ''}`,
+        read: false,
+        createdAt: serverTimestamp(),
+        type: 'message',
+        messageId: messageDoc.id
+      });
+
+      setNewMessage('');
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error('Error sending message:', error);
     } finally {
       setSendingMessage(false);
     }
@@ -198,12 +282,13 @@ export default function TicketDetails({
                   onClick={() => {
                     setIsEditing(false);
                     setEditedTicket({
-                      severity: ticket.severity,
-                      status: ticket.status,
                       title: ticket.title,
                       location: ticket.location,
-                      quantity: ticket.quantity,
+                      severity: ticket.severity,
+                      status: ticket.status,
                       notes: ticket.notes,
+                      ticketDetails: ticket.ticketDetails || '',
+                      quantity: ticket.quantity
                     });
                   }}
                   className="px-3 py-1 text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
@@ -262,9 +347,9 @@ export default function TicketDetails({
                   <span className="text-gray-900">{ticket.location}</span>
                 </div>
                 <div className="flex items-center text-sm">
-                  <FaBox className="text-gray-400 mr-2" />
+                  <FaBuilding className="text-gray-400 mr-2" />
                   <span className="text-gray-900">
-                    Quantity: {ticket.quantity}
+                    {senderCompany || 'Loading...'}
                   </span>
                 </div>
                 <div className="flex items-center text-sm">
@@ -276,6 +361,31 @@ export default function TicketDetails({
               </div>
             </div>
 
+            {isEditing ? (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                  Details
+                </h3>
+                <textarea
+                  value={editedTicket.ticketDetails}
+                  onChange={(e) =>
+                    setEditedTicket({ ...editedTicket, ticketDetails: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                  disabled={!isAdmin}
+                />
+              </div>
+            ) : (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                  Ticket Details
+                </h3>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                  {ticket.ticketDetails}
+                </p>
+              </div>
+            )}
             {isEditing ? (
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">
